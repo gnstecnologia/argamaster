@@ -2004,7 +2004,7 @@ button.btn.btn-primary.modern-btn{
 
 /* Footer */
 .footer {
-    background: #cd6d11;
+    background: #519d3c;
     color: white;
     padding: 3rem 0 2rem;
 }
@@ -2070,9 +2070,9 @@ button.btn.btn-primary.modern-btn{
 }
 
 .social-link:hover {
-    background: #cd6d11;
+    background: #519d3c;
     transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(205, 109, 17, 0.3);
+    box-shadow: 0 5px 15px rgba(81, 157, 60, 0.3);
 }
 
 .footer-bottom {
