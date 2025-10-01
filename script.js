@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initScrollAnimations();
     initHeaderScrollEffect();
     initTestimonialCarousel();
+    initProductsCarousel();
     initMobileMenu();
     initCounterAnimations();
     addDynamicStyles();
@@ -269,6 +270,232 @@ function initTestimonialCarousel() {
     // Auto-play
     setInterval(nextSlide, 5000);
 }
+
+// Carrossel de Produtos - Versão Corrigida Definitivamente
+function initProductsCarousel() {
+    const carousel = document.getElementById('productsCarousel');
+    const slides = carousel.querySelectorAll('.product-slide');
+    const prevBtn = document.getElementById('productsPrevBtn');
+    const nextBtn = document.getElementById('productsNextBtn');
+    const indicatorsContainer = document.getElementById('productsDots');
+
+    if (!carousel || !slides.length) return;
+
+    let currentIndex = 0;
+    let isTransitioning = false;
+    let autoPlayInterval;
+    const totalSlides = slides.length;
+    const slidesToShow = 3; // Sempre mostrar 3 itens
+
+    // Calcular largura do slide com precisão
+    const getSlideWidth = () => {
+        const containerWidth = carousel.parentElement.clientWidth;
+        const gap = 32; // 2rem gap
+        return (containerWidth - gap * 2) / slidesToShow;
+    };
+
+    // Função para atualizar posição do carrossel
+    const updateCarousel = (instant = false) => {
+        if (isTransitioning && !instant) return;
+        
+        const slideWidth = getSlideWidth();
+        const translateX = -currentIndex * slideWidth;
+        
+        if (instant) {
+            carousel.style.transition = 'none';
+            carousel.style.transform = `translateX(${translateX}px)`;
+            carousel.offsetHeight; // Force reflow
+            carousel.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        } else {
+            carousel.style.transform = `translateX(${translateX}px)`;
+        }
+        
+        updateIndicators();
+        updateButtons();
+    };
+
+    // Função para criar e atualizar indicadores
+    const updateIndicators = () => {
+        indicatorsContainer.innerHTML = '';
+        
+        // Calcular quantos grupos de 3 slides existem
+        const totalGroups = Math.ceil(totalSlides / slidesToShow);
+        
+        for (let i = 0; i < totalGroups; i++) {
+            const indicator = document.createElement('span');
+            indicator.classList.add('indicator');
+            
+            if (i === Math.floor(currentIndex / slidesToShow)) {
+                indicator.classList.add('active');
+            }
+            
+            indicator.addEventListener('click', () => {
+                if (!isTransitioning) {
+                    currentIndex = i * slidesToShow;
+                    updateCarousel();
+                }
+            });
+            
+            indicatorsContainer.appendChild(indicator);
+        }
+    };
+
+    // Atualizar estados dos botões
+    const updateButtons = () => {
+        prevBtn.disabled = isTransitioning;
+        nextBtn.disabled = isTransitioning;
+    };
+
+    // Navegar para slide anterior
+    const prevSlide = () => {
+        if (isTransitioning) return;
+        
+        isTransitioning = true;
+        
+        // Se está no primeiro grupo, vai para o último grupo
+        if (currentIndex < slidesToShow) {
+            currentIndex = (totalSlides - slidesToShow);
+        } else {
+            currentIndex -= slidesToShow;
+        }
+        
+        updateCarousel();
+        
+        setTimeout(() => {
+            isTransitioning = false;
+        }, 800);
+    };
+
+    // Navegar para próximo slide
+    const nextSlide = () => {
+        if (isTransitioning) return;
+        
+        isTransitioning = true;
+        
+        // Se está no último grupo, volta para o primeiro
+        if (currentIndex >= (totalSlides - slidesToShow)) {
+            currentIndex = 0;
+        } else {
+            currentIndex += slidesToShow;
+        }
+        
+        updateCarousel();
+        
+        setTimeout(() => {
+            isTransitioning = false;
+        }, 800);
+    };
+
+    // Event listeners para botões de navegação
+    prevBtn.addEventListener('click', prevSlide);
+    nextBtn.addEventListener('click', nextSlide);
+
+    // Suporte a touch/swipe
+    let startX = 0;
+    let endX = 0;
+    let isDragging = false;
+
+    carousel.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        isDragging = true;
+        stopAutoPlay();
+    });
+
+    carousel.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+    });
+
+    carousel.addEventListener('touchend', (e) => {
+        if (!isDragging) return;
+        
+        endX = e.changedTouches[0].clientX;
+        const diff = startX - endX;
+        const threshold = 50;
+        
+        if (Math.abs(diff) > threshold) {
+            if (diff > 0) {
+                nextSlide();
+            } else {
+                prevSlide();
+            }
+        }
+        
+        isDragging = false;
+        startAutoPlay();
+    });
+
+    // Suporte a mouse drag
+    let mouseStartX = 0;
+    let mouseEndX = 0;
+    let isMouseDragging = false;
+
+    carousel.addEventListener('mousedown', (e) => {
+        mouseStartX = e.clientX;
+        isMouseDragging = true;
+        stopAutoPlay();
+        e.preventDefault();
+    });
+
+    carousel.addEventListener('mousemove', (e) => {
+        if (!isMouseDragging) return;
+        e.preventDefault();
+    });
+
+    carousel.addEventListener('mouseup', (e) => {
+        if (!isMouseDragging) return;
+        
+        mouseEndX = e.clientX;
+        const diff = mouseStartX - mouseEndX;
+        const threshold = 50;
+        
+        if (Math.abs(diff) > threshold) {
+            if (diff > 0) {
+                nextSlide();
+            } else {
+                prevSlide();
+            }
+        }
+        
+        isMouseDragging = false;
+        startAutoPlay();
+    });
+
+    // Funcionalidade de auto-play
+    const startAutoPlay = () => {
+        stopAutoPlay();
+        autoPlayInterval = setInterval(() => {
+            if (!isTransitioning) {
+                nextSlide();
+            }
+        }, 6000);
+    };
+
+    const stopAutoPlay = () => {
+        if (autoPlayInterval) {
+            clearInterval(autoPlayInterval);
+            autoPlayInterval = null;
+        }
+    };
+
+    // Pausar auto-play no hover
+    carousel.addEventListener('mouseenter', stopAutoPlay);
+    carousel.addEventListener('mouseleave', startAutoPlay);
+
+    // Lidar com redimensionamento da janela
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            updateCarousel(true);
+        }, 250);
+    });
+
+    // Inicializar carrossel
+    updateCarousel(true);
+    startAutoPlay();
+}
+
 
 // Menu Mobile
 function initMobileMenu() {
