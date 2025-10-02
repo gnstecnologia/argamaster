@@ -274,12 +274,31 @@ function initTestimonialCarousel() {
 // Carrossel de Produtos - Versão Corrigida Definitivamente
 function initProductsCarousel() {
     const carousel = document.getElementById('productsCarousel');
-    const slides = carousel.querySelectorAll('.product-slide');
     const prevBtn = document.getElementById('productsPrevBtn');
     const nextBtn = document.getElementById('productsNextBtn');
     const indicatorsContainer = document.getElementById('productsDots');
 
-    if (!carousel || !slides.length) return;
+    console.log('Inicializando carrossel:', {
+        carousel: !!carousel,
+        prevBtn: !!prevBtn,
+        nextBtn: !!nextBtn,
+        indicatorsContainer: !!indicatorsContainer,
+        prevBtnElement: prevBtn,
+        nextBtnElement: nextBtn
+    });
+
+    if (!carousel) {
+        console.error('Carrossel não encontrado!');
+        return;
+    }
+
+    const slides = carousel.querySelectorAll('.product-slide');
+    console.log('Slides encontrados:', slides.length);
+
+    if (!slides.length) {
+        console.error('Nenhum slide encontrado!');
+        return;
+    }
 
     let currentIndex = 0;
     let isTransitioning = false;
@@ -299,7 +318,9 @@ function initProductsCarousel() {
         if (isTransitioning && !instant) return;
         
         const slideWidth = getSlideWidth();
-        const translateX = -currentIndex * slideWidth;
+        const gap = 32; // 2rem gap em pixels
+        // Calcular translateX considerando slides + gaps
+        const translateX = -currentIndex * (slideWidth + gap);
         
         if (instant) {
             carousel.style.transition = 'none';
@@ -318,20 +339,30 @@ function initProductsCarousel() {
     const updateIndicators = () => {
         indicatorsContainer.innerHTML = '';
         
-        // Calcular quantos grupos de 3 slides existem
-        const totalGroups = Math.ceil(totalSlides / slidesToShow);
+        // Sempre 3 grupos fixos
+        const totalGroups = 3;
         
         for (let i = 0; i < totalGroups; i++) {
             const indicator = document.createElement('span');
             indicator.classList.add('indicator');
             
-            if (i === Math.floor(currentIndex / slidesToShow)) {
+            // Determinar se este grupo está ativo
+            let isActive = false;
+            if (i === 0 && currentIndex <= 2) isActive = true;
+            else if (i === 1 && currentIndex >= 3 && currentIndex <= 5) isActive = true;
+            else if (i === 2 && currentIndex >= 5) isActive = true;
+            
+            if (isActive) {
                 indicator.classList.add('active');
             }
             
             indicator.addEventListener('click', () => {
                 if (!isTransitioning) {
-                    currentIndex = i * slidesToShow;
+                    // Definir currentIndex baseado no grupo clicado
+                    if (i === 0) currentIndex = 0;      // Grupo 1: slides 0-2
+                    else if (i === 1) currentIndex = 3; // Grupo 2: slides 3-5
+                    else if (i === 2) currentIndex = 5; // Grupo 3: slides 5-7
+                    
                     updateCarousel();
                 }
             });
@@ -342,53 +373,80 @@ function initProductsCarousel() {
 
     // Atualizar estados dos botões
     const updateButtons = () => {
-        prevBtn.disabled = isTransitioning;
-        nextBtn.disabled = isTransitioning;
+        if (prevBtn) {
+            prevBtn.disabled = isTransitioning;
+        }
+        if (nextBtn) {
+            nextBtn.disabled = isTransitioning;
+        }
     };
 
-    // Navegar para slide anterior
+    // Navegar para slide anterior - SIMULA CLIQUE NO DOT
     const prevSlide = () => {
+        console.log('prevSlide chamado, currentIndex:', currentIndex);
         if (isTransitioning) return;
         
-        isTransitioning = true;
-        
-        // Se está no primeiro grupo, vai para o último grupo
-        if (currentIndex < slidesToShow) {
-            currentIndex = (totalSlides - slidesToShow);
-        } else {
-            currentIndex -= slidesToShow;
+        // Simular clique no dot anterior
+        if (currentIndex === 0) {
+            // Está no dot 1, vai para dot 3 (grupo 3)
+            currentIndex = 5;
+        } else if (currentIndex === 3) {
+            // Está no dot 2, vai para dot 1 (grupo 1)
+            currentIndex = 0;
+        } else if (currentIndex === 5) {
+            // Está no dot 3, vai para dot 2 (grupo 2)
+            currentIndex = 3;
         }
         
+        console.log('Seta anterior: indo para currentIndex:', currentIndex);
         updateCarousel();
-        
-        setTimeout(() => {
-            isTransitioning = false;
-        }, 800);
     };
 
-    // Navegar para próximo slide
+    // Navegar para próximo slide - SIMULA CLIQUE NO DOT
     const nextSlide = () => {
+        console.log('nextSlide chamado, currentIndex:', currentIndex);
         if (isTransitioning) return;
         
-        isTransitioning = true;
-        
-        // Se está no último grupo, volta para o primeiro
-        if (currentIndex >= (totalSlides - slidesToShow)) {
+        // Simular clique no dot próximo
+        if (currentIndex === 0) {
+            // Está no dot 1, vai para dot 2 (grupo 2)
+            currentIndex = 3;
+        } else if (currentIndex === 3) {
+            // Está no dot 2, vai para dot 3 (grupo 3)
+            currentIndex = 5;
+        } else if (currentIndex === 5) {
+            // Está no dot 3, vai para dot 1 (grupo 1)
             currentIndex = 0;
-        } else {
-            currentIndex += slidesToShow;
         }
         
+        console.log('Seta próximo: indo para currentIndex:', currentIndex);
         updateCarousel();
-        
-        setTimeout(() => {
-            isTransitioning = false;
-        }, 800);
     };
 
     // Event listeners para botões de navegação
-    prevBtn.addEventListener('click', prevSlide);
-    nextBtn.addEventListener('click', nextSlide);
+    if (prevBtn) {
+        console.log('Adicionando event listener ao botão anterior:', prevBtn);
+        prevBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Botão anterior clicado - PREV SLIDE CHAMADO');
+            prevSlide();
+        });
+    } else {
+        console.error('Botão anterior não encontrado!');
+    }
+    
+    if (nextBtn) {
+        console.log('Adicionando event listener ao botão próximo:', nextBtn);
+        nextBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Botão próximo clicado - NEXT SLIDE CHAMADO');
+            nextSlide();
+        });
+    } else {
+        console.error('Botão próximo não encontrado!');
+    }
 
     // Suporte a touch/swipe
     let startX = 0;
