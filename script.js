@@ -278,23 +278,12 @@ function initProductsCarousel() {
     const nextBtn = document.getElementById('productsNextBtn');
     const indicatorsContainer = document.getElementById('productsDots');
 
-    console.log('Inicializando carrossel:', {
-        carousel: !!carousel,
-        prevBtn: !!prevBtn,
-        nextBtn: !!nextBtn,
-        indicatorsContainer: !!indicatorsContainer,
-        prevBtnElement: prevBtn,
-        nextBtnElement: nextBtn
-    });
-
     if (!carousel) {
         console.error('Carrossel não encontrado!');
         return;
     }
 
     const slides = carousel.querySelectorAll('.product-slide');
-    console.log('Slides encontrados:', slides.length);
-
     if (!slides.length) {
         console.error('Nenhum slide encontrado!');
         return;
@@ -304,23 +293,66 @@ function initProductsCarousel() {
     let isTransitioning = false;
     let autoPlayInterval;
     const totalSlides = slides.length;
-    const slidesToShow = 3; // Sempre mostrar 3 itens
+    // Função para determinar quantos slides mostrar baseado no tamanho da tela
+    const getSlidesToShow = () => {
+        const width = window.innerWidth;
+        if (width <= 480) return 1;      // Mobile: 1 slide
+        if (width <= 768) return 2;      // Tablet: 2 slides
+        return 3;                        // Desktop: 3 slides
+    };
 
-    // Calcular largura do slide com precisão
-    const getSlideWidth = () => {
-        const containerWidth = carousel.parentElement.clientWidth;
-        const gap = 32; // 2rem gap
-        return (containerWidth - gap * 2) / slidesToShow;
+
+    // Função para obter o gap correto baseado no tamanho da tela
+    const getGap = () => {
+        const width = window.innerWidth;
+        if (width <= 480) return 16; // 1rem gap (CSS: gap: 1rem)
+        if (width <= 768) return 24; // 1.5rem gap (CSS: gap: 1.5rem)
+        return 32; // 2rem gap (CSS: gap: 2rem)
     };
 
     // Função para atualizar posição do carrossel
     const updateCarousel = (instant = false) => {
         if (isTransitioning && !instant) return;
         
-        const slideWidth = getSlideWidth();
-        const gap = 32; // 2rem gap em pixels
-        // Calcular translateX considerando slides + gaps
-        const translateX = -currentIndex * (slideWidth + gap);
+        const gap = getGap();
+        const slidesToShow = getSlidesToShow();
+        const totalGroups = Math.ceil(totalSlides / slidesToShow);
+        
+        // Validar currentIndex baseado no tipo de navegação
+        if (slidesToShow === 1) {
+            // Para 1 card: currentIndex deve estar entre 0 e totalSlides-1
+            if (currentIndex >= totalSlides) {
+                currentIndex = totalSlides - 1;
+            }
+            if (currentIndex < 0) {
+                currentIndex = 0;
+            }
+        } else {
+            // Para 2 ou 3 cards: validar por grupos
+            if (currentIndex >= totalGroups * slidesToShow) {
+                currentIndex = Math.max(0, (totalGroups - 1) * slidesToShow);
+            }
+        }
+        
+        // Calcular largura correta baseada no container e slides por view
+        const containerWidth = carousel.parentElement.clientWidth;
+        const correctSlideWidth = (containerWidth - gap * (slidesToShow - 1)) / slidesToShow;
+        
+        // Calcular offset baseado nas diferenças observadas
+        let totalOffset = 0;
+        if (slidesToShow === 2) {
+            // Para 2 cards: offset de 23px por slide
+            totalOffset = currentIndex * 23;
+        } else if (slidesToShow === 3) {
+            // Para 3 cards: offset de 23px por slide
+            totalOffset = currentIndex * 23;
+        }
+        // Para 1 card: sem offset (navegação direta)
+        
+        // Calcular translateX
+        const translateX = -currentIndex * correctSlideWidth - totalOffset;
+        
+        // Debug: console.log('Carrossel atualizado:', { currentIndex, slidesToShow, translateX });
         
         if (instant) {
             carousel.style.transition = 'none';
@@ -339,35 +371,53 @@ function initProductsCarousel() {
     const updateIndicators = () => {
         indicatorsContainer.innerHTML = '';
         
-        // Sempre 3 grupos fixos
-        const totalGroups = 3;
+        const slidesToShow = getSlidesToShow();
         
-        for (let i = 0; i < totalGroups; i++) {
-            const indicator = document.createElement('span');
-            indicator.classList.add('indicator');
-            
-            // Determinar se este grupo está ativo
-            let isActive = false;
-            if (i === 0 && currentIndex <= 2) isActive = true;
-            else if (i === 1 && currentIndex >= 3 && currentIndex <= 5) isActive = true;
-            else if (i === 2 && currentIndex >= 5) isActive = true;
-            
-            if (isActive) {
-                indicator.classList.add('active');
-            }
-            
-            indicator.addEventListener('click', () => {
-                if (!isTransitioning) {
-                    // Definir currentIndex baseado no grupo clicado
-                    if (i === 0) currentIndex = 0;      // Grupo 1: slides 0-2
-                    else if (i === 1) currentIndex = 3; // Grupo 2: slides 3-5
-                    else if (i === 2) currentIndex = 5; // Grupo 3: slides 5-7
-                    
-                    updateCarousel();
+        if (slidesToShow === 1) {
+            // Para 1 card: um dot por slide
+            for (let i = 0; i < totalSlides; i++) {
+                const indicator = document.createElement('span');
+                indicator.classList.add('indicator');
+                
+                if (i === currentIndex) {
+                    indicator.classList.add('active');
                 }
-            });
+                
+                indicator.addEventListener('click', () => {
+                    if (!isTransitioning) {
+                        currentIndex = i;
+                        updateCarousel();
+                    }
+                });
+                
+                indicatorsContainer.appendChild(indicator);
+            }
+        } else {
+            // Para 2 ou 3 cards: um dot por grupo
+            const totalGroups = Math.ceil(totalSlides / slidesToShow);
             
-            indicatorsContainer.appendChild(indicator);
+            for (let i = 0; i < totalGroups; i++) {
+                const indicator = document.createElement('span');
+                indicator.classList.add('indicator');
+                
+                // Determinar se este grupo está ativo
+                const groupStartIndex = i * slidesToShow;
+                const groupEndIndex = Math.min(groupStartIndex + slidesToShow - 1, totalSlides - 1);
+                const isActive = currentIndex >= groupStartIndex && currentIndex <= groupEndIndex;
+                
+                if (isActive) {
+                    indicator.classList.add('active');
+                }
+                
+                indicator.addEventListener('click', () => {
+                    if (!isTransitioning) {
+                        currentIndex = groupStartIndex;
+                        updateCarousel();
+                    }
+                });
+                
+                indicatorsContainer.appendChild(indicator);
+            }
         }
     };
 
@@ -381,71 +431,63 @@ function initProductsCarousel() {
         }
     };
 
-    // Navegar para slide anterior - SIMULA CLIQUE NO DOT
+    // Navegar para slide anterior - RESPONSIVO
     const prevSlide = () => {
-        console.log('prevSlide chamado, currentIndex:', currentIndex);
         if (isTransitioning) return;
         
-        // Simular clique no dot anterior
-        if (currentIndex === 0) {
-            // Está no dot 1, vai para dot 3 (grupo 3)
-            currentIndex = 5;
-        } else if (currentIndex === 3) {
-            // Está no dot 2, vai para dot 1 (grupo 1)
-            currentIndex = 0;
-        } else if (currentIndex === 5) {
-            // Está no dot 3, vai para dot 2 (grupo 2)
-            currentIndex = 3;
+        const slidesToShow = getSlidesToShow();
+        
+        if (slidesToShow === 1) {
+            // Para 1 card: navegação slide por slide
+            currentIndex = currentIndex === 0 ? totalSlides - 1 : currentIndex - 1;
+        } else {
+            // Para 2 ou 3 cards: navegação por grupos
+            const totalGroups = Math.ceil(totalSlides / slidesToShow);
+            const currentGroup = Math.floor(currentIndex / slidesToShow);
+            const prevGroup = currentGroup === 0 ? totalGroups - 1 : currentGroup - 1;
+            currentIndex = prevGroup * slidesToShow;
         }
         
-        console.log('Seta anterior: indo para currentIndex:', currentIndex);
+        // Debug: console.log('Seta anterior:', { slidesToShow, currentIndex });
         updateCarousel();
     };
 
-    // Navegar para próximo slide - SIMULA CLIQUE NO DOT
+    // Navegar para próximo slide - RESPONSIVO
     const nextSlide = () => {
-        console.log('nextSlide chamado, currentIndex:', currentIndex);
         if (isTransitioning) return;
         
-        // Simular clique no dot próximo
-        if (currentIndex === 0) {
-            // Está no dot 1, vai para dot 2 (grupo 2)
-            currentIndex = 3;
-        } else if (currentIndex === 3) {
-            // Está no dot 2, vai para dot 3 (grupo 3)
-            currentIndex = 5;
-        } else if (currentIndex === 5) {
-            // Está no dot 3, vai para dot 1 (grupo 1)
-            currentIndex = 0;
+        const slidesToShow = getSlidesToShow();
+        
+        if (slidesToShow === 1) {
+            // Para 1 card: navegação slide por slide
+            currentIndex = (currentIndex + 1) % totalSlides;
+        } else {
+            // Para 2 ou 3 cards: navegação por grupos
+            const totalGroups = Math.ceil(totalSlides / slidesToShow);
+            const currentGroup = Math.floor(currentIndex / slidesToShow);
+            const nextGroup = (currentGroup + 1) % totalGroups;
+            currentIndex = nextGroup * slidesToShow;
         }
         
-        console.log('Seta próximo: indo para currentIndex:', currentIndex);
+        // Debug: console.log('Seta próximo:', { slidesToShow, currentIndex });
         updateCarousel();
     };
 
     // Event listeners para botões de navegação
     if (prevBtn) {
-        console.log('Adicionando event listener ao botão anterior:', prevBtn);
         prevBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Botão anterior clicado - PREV SLIDE CHAMADO');
             prevSlide();
         });
-    } else {
-        console.error('Botão anterior não encontrado!');
     }
     
     if (nextBtn) {
-        console.log('Adicionando event listener ao botão próximo:', nextBtn);
         nextBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Botão próximo clicado - NEXT SLIDE CHAMADO');
             nextSlide();
         });
-    } else {
-        console.error('Botão próximo não encontrado!');
     }
 
     // Suporte a touch/swipe
@@ -658,4 +700,4 @@ function addDynamicStyles() {
     document.head.appendChild(style);
 }
 
-console.log('🏗️ Xingu Argamassas - Landing Page carregada!');
+// Xingu Argamassas - Landing Page carregada!
